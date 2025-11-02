@@ -3,6 +3,7 @@
 import asyncio
 import logging
 from datetime import datetime
+from typing import Any
 from uuid import uuid4
 
 import aiohttp
@@ -46,7 +47,7 @@ class Scanner:
         self._session: aiohttp.ClientSession | None = None
 
         # Initialize scanner modules
-        self.scanners = {
+        self.scanners: dict[str, Any] = {
             "sql_injection": SQLInjectionScanner(),
             "xss": XSSScanner(),
             "csrf": CSRFScanner(),
@@ -61,7 +62,9 @@ class Scanner:
         )
         return self
 
-    async def __aexit__(self, exc_type, exc_val, exc_tb) -> None:
+    async def __aexit__(
+        self, exc_type: type[BaseException] | None, exc_val: BaseException | None, exc_tb: object
+    ) -> None:
         """Async context manager exit."""
         if self._session:
             await self._session.close()
@@ -96,7 +99,7 @@ class Scanner:
         # Run enabled scanners concurrently
         scan_tasks = []
         for scanner_name in self.config.enabled_scanners:
-            if scanner_name in self.scanners:
+            if scanner_name in self.scanners and self._session:
                 scanner = self.scanners[scanner_name]
                 scan_tasks.append(scanner.scan_pages(pages, self._session))
 

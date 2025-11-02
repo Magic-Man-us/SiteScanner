@@ -2,6 +2,7 @@
 
 import asyncio
 import logging
+from typing import Any
 
 import aiohttp
 from bs4 import BeautifulSoup
@@ -44,14 +45,12 @@ class CSRFProtectionCheck(BaseModel):
             ]
         )
 
-        if protections == 0:
-            return "none"
-        elif protections == 1:
-            return "weak"
-        elif protections == 2:
-            return "moderate"
-        else:
-            return "strong"
+        protection_levels = {
+            0: "none",
+            1: "weak",
+            2: "moderate",
+        }
+        return protection_levels.get(protections, "strong")
 
 
 class CSRFScanner:
@@ -134,7 +133,7 @@ class CSRFScanner:
 
         return vulnerabilities
 
-    def _analyze_form(self, form: BeautifulSoup, page_url: str) -> CSRFTestCase:
+    def _analyze_form(self, form: Any, page_url: str) -> CSRFTestCase:
         """Analyze a form for CSRF protection using Pydantic validation.
 
         Args:
@@ -165,8 +164,12 @@ class CSRFScanner:
 
         inputs = form.find_all(["input", "textarea", "select"])
         for input_field in inputs:
-            field_name = input_field.get("name", "")
-            field_value = input_field.get("value", "")
+            field_name_raw = input_field.get("name", "")
+            field_value_raw = input_field.get("value", "")
+
+            # Extract string values
+            field_name = field_name_raw if isinstance(field_name_raw, str) else ""
+            field_value = field_value_raw if isinstance(field_value_raw, str) else ""
 
             if field_name:
                 fields[field_name] = field_value
@@ -183,9 +186,9 @@ class CSRFScanner:
         return CSRFTestCase(
             url=page_url,
             form_action=form_action if form_action else None,
-            form_method=form_method
-            if form_method in ["GET", "POST", "PUT", "DELETE", "PATCH"]
-            else "POST",
+            form_method=(
+                form_method if form_method in ["GET", "POST", "PUT", "DELETE", "PATCH"] else "POST"
+            ),
             has_csrf_token=has_csrf,
             token_field_name=csrf_token_field,
             form_fields=fields,
@@ -195,8 +198,8 @@ class CSRFScanner:
     def _check_csrf_protection(
         self,
         test_case: CSRFTestCase,
-        headers: dict,
-        cookies: dict,
+        headers: dict[str, str],
+        cookies: dict[str, Any],
     ) -> CSRFProtectionCheck:
         """Check for various CSRF protection mechanisms.
 
@@ -212,7 +215,7 @@ class CSRFScanner:
 
         # Check for SameSite cookie attribute
         for cookie in cookies.values():
-            if hasattr(cookie, "get") and cookie.get("samesite"):
+            if hasattr(cookie, "get") and callable(cookie.get) and cookie.get("samesite"):
                 protection.has_samesite_cookie = True
                 break
 
