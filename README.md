@@ -109,10 +109,10 @@ async def main():
         max_depth=3,
         enabled_scanners=["sql_injection", "xss"],
     )
-    
+
     async with Scanner(config) as scanner:
         result = await scanner.scan()
-        
+
     print(f"Found {len(result.vulnerabilities)} vulnerabilities")
     for vuln in result.vulnerabilities:
         print(f"- {vuln.vuln_type}: {vuln.severity}")
@@ -173,7 +173,7 @@ sitescanner5000/
   run: |
     pip install sitescanner5000
     sitescanner scan ${{ secrets.TARGET_URL }} --output scan-results.json --format json
-    
+
 - name: Check for Critical Vulnerabilities
   run: |
     # Exit code 2 = critical vulnerabilities found

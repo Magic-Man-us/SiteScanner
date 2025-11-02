@@ -47,10 +47,7 @@ async def test_sql_scanner_detects_vulnerability(mock_session, vulnerable_sql_re
     mock_session.get.return_value = mock_context
 
     # Scan pages
-    vulnerabilities = await scanner.scan_pages(
-        ["https://example.com/page?id=1"],
-        mock_session
-    )
+    vulnerabilities = await scanner.scan_pages(["https://example.com/page?id=1"], mock_session)
 
     # Should detect SQL injection
     assert len(vulnerabilities) > 0
@@ -67,10 +64,7 @@ async def test_sql_scanner_no_parameters(mock_session):
     mock_response.text = AsyncMock(return_value="<html>Safe page</html>")
     mock_session.get = AsyncMock(return_value=mock_response)
 
-    vulnerabilities = await scanner.scan_pages(
-        ["https://example.com/page"],
-        mock_session
-    )
+    vulnerabilities = await scanner.scan_pages(["https://example.com/page"], mock_session)
 
     # Should return empty list (no parameters to test)
     assert len(vulnerabilities) == 0

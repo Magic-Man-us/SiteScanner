@@ -49,10 +49,7 @@ async def test_xss_scanner_detects_vulnerability(mock_session, xss_reflected_res
     mock_session.get.return_value = mock_context
 
     # Scan pages
-    vulnerabilities = await scanner.scan_pages(
-        ["https://example.com/search?q=test"],
-        mock_session
-    )
+    vulnerabilities = await scanner.scan_pages(["https://example.com/search?q=test"], mock_session)
 
     # Should detect XSS
     assert len(vulnerabilities) > 0
@@ -75,10 +72,7 @@ async def test_xss_scanner_safe_page(mock_session):
     mock_context.__aexit__.return_value = None
     mock_session.get.return_value = mock_context
 
-    vulnerabilities = await scanner.scan_pages(
-        ["https://example.com/search?q=test"],
-        mock_session
-    )
+    vulnerabilities = await scanner.scan_pages(["https://example.com/search?q=test"], mock_session)
 
     # Should not detect XSS (content is properly encoded)
     assert len(vulnerabilities) == 0
