@@ -10,15 +10,15 @@ SiteScanner5000 is a comprehensive security scanning tool that identifies common
 
 ## Features
 
-- 🔍 **SQL Injection Detection**: Identifies SQL injection vulnerabilities with multiple payload variations
-- 🚨 **XSS Scanner**: Detects reflected, stored, and DOM-based XSS vulnerabilities
-- 🛡️ **CSRF Protection Check**: Validates CSRF token implementations and cookie security
-- ⚙️ **Configuration Scanner**: Checks security headers, TLS/HTTPS configuration, and information disclosure
-- ⚡ **Async/Concurrent Scanning**: Fast scanning with configurable concurrent requests
-- 📊 **Multiple Output Formats**: JSON and human-readable text reports
-- ✅ **Pydantic Validation**: Robust data validation for all models and payloads
-- 🔧 **CLI Interface**: Easy-to-use command-line tool
-- 🔄 **CI/CD Integration**: Perfect for automated security testing pipelines
+- **SQL Injection Detection**: Identifies SQL injection vulnerabilities with multiple payload variations
+- **XSS Scanner**: Detects reflected, stored, and DOM-based XSS vulnerabilities
+- **CSRF Protection Check**: Validates CSRF token implementations and cookie security
+- **Configuration Scanner**: Checks security headers, TLS/HTTPS configuration, and information disclosure
+- **Async/Concurrent Scanning**: Fast scanning with configurable concurrent requests
+- **Multiple Output Formats**: JSON and human-readable text reports
+- **Pydantic Validation**: Robust data validation for all models and payloads
+- **CLI Interface**: Easy-to-use command-line tool
+- **CI/CD Integration**: Perfect for automated security testing pipelines
 
 ## Installation
 

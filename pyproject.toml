@@ -3,7 +3,7 @@ name = "sitescanner5000"
 version = "0.1.0"
 description = "Automated security vulnerability scanner for web applications"
 authors = [
-    {name = "SiteScanner5000 Team", email = "team@sitescanner.example.com"}
+    {name = "SiteScanner5000 Team", email = "deleterious420+sitescanner5000@gmail.com"}
 ]
 readme = "README.md"
 requires-python = ">=3.11"
