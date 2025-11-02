@@ -86,7 +86,7 @@ jobs:
       # Upload Codecov once to avoid noisy duplicate uploads
       - name: Upload to Codecov
         if: matrix.python-version == '3.11'
-        uses: codecov/codecov-action@v4
+        uses: codecov/codecov-action@v5
         with:
           files: coverage.xml
           flags: unittests
