@@ -1,7 +1,6 @@
 # SiteScanner5000
 
 [![CI (uv)](https://github.com/Magic-Man-us/SiteScanner/actions/workflows/ci.yml/badge.svg)](https://github.com/Magic-Man-us/SiteScanner/actions/workflows/ci.yml)
-[![Codecov](https://img.shields.io/codecov/c/github/Magic-Man-us/SiteScanner.svg?style=flat)](https://codecov.io/gh/Magic-Man-us/SiteScanner)
 [![Python 3.11+](https://img.shields.io/badge/python-3.11%20%7C%203.12%20%7C%203.13%20%7C%203.14-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![uv](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/uv/main/assets/badge/v0.json)](https://github.com/astral-sh/uv)
