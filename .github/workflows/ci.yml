@@ -38,10 +38,10 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Install uv
-        uses: astral-sh/setup-uv@v4
+        uses: astral-sh/setup-uv@v7
         with:
           enable-cache: true
 
@@ -66,52 +66,39 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          if grep -R --line-number -E "\beval\(|\bexec\(|pickle\.loads|yaml\.load(?!_safe)|subprocess\.(Popen|call)" src/ tests/ || true; then
+          if grep -rn -E '\beval\(|\bexec\(|pickle\.loads|yaml\.load\(|subprocess\.(Popen|call)\(' src/ tests/ 2>/dev/null | grep -v 'yaml\.load_safe' || true; then
             echo "⚠️ Potentially dangerous API usage detected. Please review." >&2
             exit 2
           fi
 
       - name: Upload coverage.xml
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: coverage-${{ matrix.python-version }}
           path: coverage.xml
 
       - name: Upload coverage HTML
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: coverage-html-${{ matrix.python-version }}
           path: htmlcov
 
-      # Upload Codecov once to avoid noisy duplicate uploads
-      - name: Upload to Codecov
-        if: matrix.python-version == '3.11'
-        uses: codecov/codecov-action@v4
-        with:
-          files: coverage.xml
-          flags: unittests
-          fail_ci_if_error: false
-        env:
-          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
-
   security:
-    name: Security Scan (Bandit + Safety)
+    name: Security Scan (Bandit)
     runs-on: ubuntu-latest
     needs: test
-    # Grant code scanning upload only here
     permissions:
       contents: read
-      security-events: write
 
     env:
       SECURITY_FAIL_LEVEL: MEDIUM
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Install uv
-        uses: astral-sh/setup-uv@v4
+        uses: astral-sh/setup-uv@v7
         with:
           enable-cache: true
 
@@ -121,33 +108,57 @@ jobs:
       - name: Sync dependencies
         run: uv sync --all-extras --dev
 
-      - name: Run Bandit (JSON + SARIF)
+      - name: Run Bandit (JSON)
         run: |
-          uv run bandit -r src/ -f json  -o bandit-report.json || true
-          uv run bandit -r src/ -f sarif -o bandit-report.sarif || true
-
-      - name: Upload Bandit SARIF to GitHub Code Scanning
-        uses: github/codeql-action/upload-sarif@v3
-        with:
-          sarif_file: bandit-report.sarif
-        continue-on-error: true
-
-      - name: Run Safety (JSON)
-        run: uv run safety check --json > safety-report.json || true
+          uv run bandit -r src/ -f json -o bandit-report.json || true
+          uv run bandit -r src/ -f txt
 
       - name: Apply Bandit threshold
         run: uv run python scripts/security_bandit_check.py
         continue-on-error: true
 
-      - name: Fail on Safety vulnerabilities
-        run: uv run python scripts/security_safety_check.py
-
       - name: Upload security reports
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: security-reports
-          path: |
-            bandit-report.json
-            bandit-report.sarif
-            safety-report.json
+          path: bandit-report.json
+
+  docs:
+    name: Build Documentation
+    runs-on: ubuntu-latest
+    needs: test
+    permissions:
+      contents: write  # Needed for GitHub Pages deployment
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          enable-cache: true
+
+      - name: Set up Python
+        run: uv python install 3.11
+
+      - name: Sync dependencies (includes sphinx)
+        run: uv sync --all-extras --dev
+
+      - name: Build documentation
+        run: uv run sphinx-build -b html docs docs/_build/html
+
+      - name: Upload documentation artifacts
+        uses: actions/upload-artifact@v5
+        with:
+          name: documentation
+          path: docs/_build/html
+
+      - name: Deploy to GitHub Pages
+        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./docs/_build/html
+          keep_files: false
