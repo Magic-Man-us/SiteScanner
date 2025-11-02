@@ -167,6 +167,7 @@ line-length = 100
 target-version = "py311"
 src = ["src", "tests"]
 extend-include = ["*.ipynb"]
+extend-exclude = ["scripts", "docs"]
 
 [tool.ruff.lint]
 select = [
