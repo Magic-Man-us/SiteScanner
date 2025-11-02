@@ -2,7 +2,7 @@
 
 import asyncio
 import logging
-from typing import Any
+from typing import Any, ClassVar
 
 import aiohttp
 from bs4 import BeautifulSoup
@@ -57,7 +57,7 @@ class CSRFScanner:
     """Scanner for CSRF vulnerabilities using Pydantic validation."""
 
     # Common CSRF token field names
-    CSRF_TOKEN_NAMES = [
+    CSRF_TOKEN_NAMES: ClassVar[list[str]] = [
         "csrf_token",
         "csrftoken",
         "csrf",
@@ -90,7 +90,7 @@ class CSRFScanner:
             if isinstance(result, list):
                 vulnerabilities.extend(result)
             elif isinstance(result, Exception):
-                logger.error(f"Error scanning page for CSRF: {result}")
+                logger.error("Error scanning page for CSRF: %s", result)
 
         return vulnerabilities
 
@@ -129,7 +129,7 @@ class CSRFScanner:
                             vulnerabilities.append(vuln)
 
         except Exception as e:
-            logger.debug(f"Error scanning {url} for CSRF: {e}")
+            logger.debug("Error scanning %s for CSRF: %s", url, e)
 
         return vulnerabilities
 

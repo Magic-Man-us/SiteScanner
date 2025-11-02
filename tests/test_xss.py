@@ -25,7 +25,7 @@ async def test_xss_payload_validation():
 @pytest.mark.asyncio
 async def test_xss_payload_type_validation():
     """Test that invalid payload types are rejected."""
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match="payload_type must be one of"):
         XSSPayload(
             payload="<script>test</script>",
             description="Test",

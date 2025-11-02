@@ -2,6 +2,7 @@
 
 import asyncio
 import logging
+from typing import ClassVar
 
 import aiohttp
 from pydantic import BaseModel, Field
@@ -47,7 +48,7 @@ class ConfigScanner:
     """Scanner for security misconfigurations using Pydantic validation."""
 
     # Security headers to check with Pydantic models
-    SECURITY_HEADERS = [
+    SECURITY_HEADERS: ClassVar[list[SecurityHeader]] = [
         SecurityHeader(
             name="X-Frame-Options",
             expected=True,
@@ -100,7 +101,7 @@ class ConfigScanner:
     ]
 
     # Headers that should NOT be present (information disclosure)
-    DANGEROUS_HEADERS = [
+    DANGEROUS_HEADERS: ClassVar[list[SecurityHeader]] = [
         SecurityHeader(
             name="Server",
             expected=False,
@@ -145,7 +146,7 @@ class ConfigScanner:
             if isinstance(result, list):
                 vulnerabilities.extend(result)
             elif isinstance(result, Exception):
-                logger.error(f"Error scanning page for config issues: {result}")
+                logger.error("Error scanning page for config issues: %s", result)
 
         return vulnerabilities
 
@@ -183,20 +184,20 @@ class ConfigScanner:
                         )
 
                 # Check for dangerous headers that should not be present
-                for danger_header in self.DANGEROUS_HEADERS:
-                    if danger_header.name.lower() in headers:
-                        vulnerabilities.append(
-                            self._create_info_disclosure_vulnerability(
-                                danger_header, headers[danger_header.name.lower()], test_case
-                            )
-                        )
+                vulnerabilities.extend(
+                    self._create_info_disclosure_vulnerability(
+                        danger_header, headers[danger_header.name.lower()], test_case
+                    )
+                    for danger_header in self.DANGEROUS_HEADERS
+                    if danger_header.name.lower() in headers
+                )
 
                 # Check TLS configuration
                 tls_vulns = await self._check_tls_config(url, headers)
                 vulnerabilities.extend(tls_vulns)
 
         except Exception as e:
-            logger.debug(f"Error checking config on {url}: {e}")
+            logger.debug("Error checking config on %s: %s", url, e)
 
         return vulnerabilities
 

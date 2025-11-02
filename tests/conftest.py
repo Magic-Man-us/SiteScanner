@@ -9,8 +9,7 @@ import pytest
 @pytest.fixture
 def mock_session():
     """Create a mock aiohttp ClientSession."""
-    session = AsyncMock(spec=aiohttp.ClientSession)
-    return session
+    return AsyncMock(spec=aiohttp.ClientSession)
 
 
 @pytest.fixture

@@ -10,4 +10,4 @@ __author__ = "SiteScanner5000 Team"
 from sitescanner.core.result import ScanResult, Vulnerability
 from sitescanner.core.scanner import Scanner
 
-__all__ = ["Scanner", "ScanResult", "Vulnerability"]
+__all__ = ["ScanResult", "Scanner", "Vulnerability"]

@@ -1,8 +1,8 @@
 """Main scanner orchestration engine."""
 
 import asyncio
+import datetime
 import logging
-from datetime import datetime
 from typing import Any
 from uuid import uuid4
 
@@ -79,12 +79,13 @@ class Scanner:
             RuntimeError: If scanner not initialized with context manager
         """
         if not self._session:
-            raise RuntimeError("Scanner must be used as async context manager")
+            msg = "Scanner must be used as async context manager"
+            raise RuntimeError(msg)
 
         scan_id = str(uuid4())
-        start_time = datetime.now()
+        start_time = datetime.datetime.now(tz=datetime.UTC)
 
-        logger.info(f"Starting scan {scan_id} for {self.config.target}")
+        logger.info("Starting scan %s for %s", scan_id, self.config.target)
 
         self.scan_result = ScanResult(
             target=self.config.target,
@@ -94,7 +95,7 @@ class Scanner:
 
         # Discover pages to scan
         pages = await self._discover_pages()
-        logger.info(f"Discovered {len(pages)} pages to scan")
+        logger.info("Discovered %d pages to scan", len(pages))
 
         # Run enabled scanners concurrently
         scan_tasks = []
@@ -112,13 +113,15 @@ class Scanner:
                 self.scan_result.add_vulnerability(vuln)
 
         # Finalize scan result
-        end_time = datetime.now()
+        end_time = datetime.datetime.now(tz=datetime.UTC)
         self.scan_result.end_time = end_time
         self.scan_result.pages_scanned = len(pages)
         self.scan_result.scan_duration = (end_time - start_time).total_seconds()
 
         logger.info(
-            f"Scan {scan_id} completed. Found {len(self.scan_result.vulnerabilities)} vulnerabilities"
+            "Scan %s completed. Found %d vulnerabilities",
+            scan_id,
+            len(self.scan_result.vulnerabilities),
         )
 
         return self.scan_result

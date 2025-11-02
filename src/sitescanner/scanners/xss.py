@@ -2,15 +2,12 @@
 
 import asyncio
 import logging
-from typing import TYPE_CHECKING
+from typing import ClassVar
 from urllib.parse import ParseResult, parse_qs, urlencode, urlparse, urlunparse
 
 import aiohttp
 from bs4 import BeautifulSoup
 from pydantic import BaseModel, Field, field_validator
-
-if TYPE_CHECKING:
-    pass
 
 from sitescanner.core.result import Severity, Vulnerability
 
@@ -33,7 +30,8 @@ class XSSPayload(BaseModel):
         """Validate XSS payload type."""
         allowed = {"reflected", "stored", "dom"}
         if v.lower() not in allowed:
-            raise ValueError(f"payload_type must be one of {allowed}")
+            msg = f"payload_type must be one of {allowed}"
+            raise ValueError(msg)
         return v.lower()
 
 
@@ -52,7 +50,7 @@ class XSSScanner:
     """Scanner for XSS vulnerabilities using Pydantic validation."""
 
     # XSS test payloads with Pydantic validation
-    PAYLOADS = [
+    PAYLOADS: ClassVar[list[XSSPayload]] = [
         XSSPayload(
             payload="<script>alert('XSS')</script>",
             description="Basic script injection",
@@ -118,7 +116,7 @@ class XSSScanner:
             if isinstance(result, list):
                 vulnerabilities.extend(result)
             elif isinstance(result, Exception):
-                logger.error(f"Error scanning page for XSS: {result}")
+                logger.error("Error scanning page for XSS: %s", result)
 
         return vulnerabilities
 
@@ -154,7 +152,7 @@ class XSSScanner:
                             vulnerabilities.append(vuln)
 
                     except Exception as e:
-                        logger.debug(f"Error testing XSS on {param_name}: {e}")
+                        logger.debug("Error testing XSS on %s: %s", param_name, e)
 
         # Test form inputs
         form_vulns = await self._scan_forms(url, session)
@@ -223,7 +221,7 @@ class XSSScanner:
                         )
 
         except Exception as e:
-            logger.debug(f"Request failed for {test_url}: {e}")
+            logger.debug("Request failed for %s: %s", test_url, e)
 
         return None
 
@@ -255,6 +253,6 @@ class XSSScanner:
                             pass
 
         except Exception as e:
-            logger.debug(f"Error scanning forms on {url}: {e}")
+            logger.debug("Error scanning forms on %s: %s", url, e)
 
         return vulnerabilities

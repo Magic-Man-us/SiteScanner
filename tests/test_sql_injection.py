@@ -24,7 +24,7 @@ async def test_sql_payload_validation():
 @pytest.mark.asyncio
 async def test_sql_payload_empty_validation():
     """Test that empty payloads are rejected."""
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match="Payload cannot be empty or whitespace"):
         SQLInjectionPayload(
             payload="   ",  # Only whitespace
             description="Invalid payload",

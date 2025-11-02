@@ -3,8 +3,8 @@
 import asyncio
 import json
 import logging
-import sys
 from pathlib import Path
+import sys
 
 import click
 from pydantic import HttpUrl, ValidationError
@@ -32,7 +32,6 @@ def cli() -> None:
     Scan web applications for common security vulnerabilities including
     SQL injection, XSS, CSRF, and security misconfigurations.
     """
-    pass
 
 
 @cli.command()
@@ -79,7 +78,7 @@ def cli() -> None:
 @click.option(
     "--output",
     "-o",
-    type=click.Path(path_type=Path),
+    type=click.Path(),
     help="Output file for scan results (JSON format)",
 )
 @click.option(

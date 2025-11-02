@@ -1,9 +1,9 @@
 """Tests for core scanner and result models."""
 
-from datetime import datetime
+import datetime
 
-import pytest
 from pydantic import ValidationError
+import pytest
 
 from sitescanner.core.result import ScanResult, Severity, Vulnerability
 
@@ -58,7 +58,7 @@ def test_scan_result_model():
     result = ScanResult(
         target="https://example.com",
         scan_id="test-123",
-        start_time=datetime.now(),
+        start_time=datetime.datetime.now(tz=datetime.UTC),
     )
 
     assert result.vulnerabilities == []

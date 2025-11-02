@@ -3,7 +3,7 @@ name = "sitescanner5000"
 version = "0.1.0"
 description = "Automated security vulnerability scanner for web applications"
 authors = [
-    {name = "SiteScanner5000 Team", email = "deleterious420+sitescanner5000@gmail.com"}
+    {name = "SiteScanner Team", email = "deleterious420+sitescanner5000@gmail.com"}
 ]
 readme = "README.md"
 requires-python = ">=3.11"
@@ -18,6 +18,8 @@ classifiers = [
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Typing :: Typed",
 ]
 
 dependencies = [
@@ -29,51 +31,90 @@ dependencies = [
 
 [project.optional-dependencies]
 dev = [
-    "pytest>=7.4.0",
-    "pytest-asyncio>=0.21.0",
+    "pytest>=8.0.0",
+    "pytest-asyncio>=0.23.0",
     "pytest-cov>=4.1.0",
     "pytest-mock>=3.12.0",
     "hypothesis>=6.92.0",
-    "mypy>=1.7.0",
-    "ruff>=0.1.6",
-    "black>=23.11.0",
+    "mypy>=1.11.0",
+    "ruff>=0.6.0",
+    "black>=24.0.0",
+    "pre-commit>=3.8.0",
+    "bandit>=1.7.0",
+    "safety>=3.0.0",
 ]
 
 [project.scripts]
 sitescanner = "sitescanner.cli:cli"
 
 [project.urls]
-Homepage = "https://github.com/yourusername/sitescanner5000"
-Repository = "https://github.com/yourusername/sitescanner5000"
-Issues = "https://github.com/yourusername/sitescanner5000/issues"
+Homepage = "https://github.com/Magic-Man-us/SiteScanner"
+Documentation = "https://github.com/Magic-Man-us/SiteScanner#readme"
+Repository = "https://github.com/Magic-Man-us/SiteScanner"
+Issues = "https://github.com/Magic-Man-us/SiteScanner/issues"
+Changelog = "https://github.com/Magic-Man-us/SiteScanner/releases"
 
 [build-system]
-requires = ["setuptools>=68.0", "wheel"]
-build-backend = "setuptools.build_meta"
+requires = ["hatchling"]
+build-backend = "hatchling.build"
 
-[tool.setuptools.packages.find]
-where = ["src"]
+[tool.hatch.build.targets.wheel]
+packages = ["src/sitescanner"]
 
+[tool.hatch.build.targets.sdist]
+include = [
+    "/src",
+    "/tests",
+    "/README.md",
+    "/LICENSE",
+    "/pyproject.toml",
+]
+
+# ============================================================================
+# pytest Configuration
+# ============================================================================
 [tool.pytest.ini_options]
-minversion = "7.0"
+minversion = "8.0"
 testpaths = ["tests"]
-python_files = ["test_*.py"]
+python_files = ["test_*.py", "*_test.py"]
 python_classes = ["Test*"]
 python_functions = ["test_*"]
 asyncio_mode = "auto"
 addopts = [
     "--strict-markers",
     "--strict-config",
+    "--showlocals",
+    "-ra",
     "--cov=sitescanner",
-    "--cov-report=term-missing",
+    "--cov-report=term-missing:skip-covered",
     "--cov-report=html",
+    "--cov-report=xml",
+    "--cov-branch",
+]
+markers = [
+    "slow: marks tests as slow (deselect with '-m \"not slow\"')",
+    "integration: marks tests as integration tests",
+    "unit: marks tests as unit tests",
+]
+filterwarnings = [
+    "error",
+    "ignore::DeprecationWarning",
 ]
 
 [tool.coverage.run]
 source = ["src"]
-omit = ["*/tests/*", "*/test_*.py"]
+branch = true
+parallel = true
+omit = [
+    "*/tests/*",
+    "*/__pycache__/*",
+    "*/.venv/*",
+]
 
 [tool.coverage.report]
+precision = 2
+show_missing = true
+skip_covered = false
 exclude_lines = [
     "pragma: no cover",
     "def __repr__",
@@ -82,11 +123,17 @@ exclude_lines = [
     "if __name__ == .__main__.:",
     "if TYPE_CHECKING:",
     "@abstractmethod",
+    "@overload",
 ]
 
+[tool.coverage.html]
+directory = "htmlcov"
+
+# ============================================================================
+# mypy Configuration
+# ============================================================================
 [tool.mypy]
 python_version = "3.11"
-strict = true
 warn_return_any = true
 warn_unused_configs = true
 disallow_untyped_defs = true
@@ -97,38 +144,91 @@ no_implicit_optional = true
 warn_redundant_casts = true
 warn_unused_ignores = true
 warn_no_return = true
-follow_imports = "normal"
-ignore_missing_imports = false
+warn_unreachable = true
+strict_equality = true
+show_error_codes = true
+show_column_numbers = true
+pretty = true
+
+[[tool.mypy.overrides]]
+module = "tests.*"
+disallow_untyped_defs = false
+disallow_incomplete_defs = false
 
 [[tool.mypy.overrides]]
 module = ["bs4.*", "aiohttp.*"]
 ignore_missing_imports = true
 
+# ============================================================================
+# Ruff Configuration
+# ============================================================================
 [tool.ruff]
 line-length = 100
 target-version = "py311"
 src = ["src", "tests"]
+extend-include = ["*.ipynb"]
 
 [tool.ruff.lint]
 select = [
-    "E",   # pycodestyle errors
-    "W",   # pycodestyle warnings
-    "F",   # pyflakes
-    "I",   # isort
-    "B",   # flake8-bugbear
-    "C4",  # flake8-comprehensions
-    "UP",  # pyupgrade
-    "ARG", # flake8-unused-arguments
-    "SIM", # flake8-simplify
+    "E",      # pycodestyle errors
+    "W",      # pycodestyle warnings
+    "F",      # pyflakes
+    "I",      # isort
+    "N",      # pep8-naming
+    "UP",     # pyupgrade
+    "B",      # flake8-bugbear
+    "C4",     # flake8-comprehensions
+    "DTZ",    # flake8-datetimez
+    "T10",    # flake8-debugger
+    "EM",     # flake8-errmsg
+    "FA",     # flake8-future-annotations
+    "ISC",    # flake8-implicit-str-concat
+    "ICN",    # flake8-import-conventions
+    "G",      # flake8-logging-format
+    "PIE",    # flake8-pie
+    "T20",    # flake8-print
+    "PT",     # flake8-pytest-style
+    "Q",      # flake8-quotes
+    "RSE",    # flake8-raise
+    "RET",    # flake8-return
+    "SIM",    # flake8-simplify
+    "TID",    # flake8-tidy-imports
+    "TCH",    # flake8-type-checking
+    "PTH",    # flake8-use-pathlib
+    "ERA",    # eradicate
+    "PL",     # pylint
+    "PERF",   # perflint
+    "RUF",    # ruff-specific rules
 ]
 ignore = [
-    "E501",  # line too long (handled by black)
-    "B008",  # function calls in argument defaults
+    "E501",    # line too long (handled by formatter)
+    "B008",    # function calls in argument defaults (Pydantic uses this)
+    "PLR0913", # too many arguments
+    "PLR2004", # magic value comparison
 ]
 
 [tool.ruff.lint.per-file-ignores]
-"__init__.py" = ["F401"]  # unused imports in __init__.py
-"tests/**/*.py" = ["ARG", "S101"]  # Allow unused args and assert in tests
+"__init__.py" = [
+    "F401",   # unused imports OK in __init__
+]
+"tests/**/*.py" = [
+    "S101",   # assert allowed in tests
+    "PLR2004", # magic values OK in tests
+    "ARG",    # unused arguments OK in tests
+]
+
+[tool.ruff.lint.isort]
+known-first-party = ["sitescanner"]
+force-sort-within-sections = true
+
+[tool.ruff.lint.pydocstyle]
+convention = "google"
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+skip-magic-trailing-comma = false
+line-ending = "auto"
 
 [tool.black]
 line-length = 100

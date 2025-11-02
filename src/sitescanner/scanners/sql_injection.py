@@ -2,14 +2,11 @@
 
 import asyncio
 import logging
-from typing import TYPE_CHECKING
+from typing import ClassVar
 from urllib.parse import ParseResult, parse_qs, urlencode, urlparse, urlunparse
 
 import aiohttp
 from pydantic import BaseModel, Field, field_validator
-
-if TYPE_CHECKING:
-    pass
 
 from sitescanner.core.result import Severity, Vulnerability
 
@@ -30,7 +27,8 @@ class SQLInjectionPayload(BaseModel):
     def validate_payload(cls, v: str) -> str:
         """Ensure payload is not empty or whitespace only."""
         if not v.strip():
-            raise ValueError("Payload cannot be empty or whitespace")
+            msg = "Payload cannot be empty or whitespace"
+            raise ValueError(msg)
         return v
 
 
@@ -50,7 +48,7 @@ class SQLInjectionScanner:
     """Scanner for SQL injection vulnerabilities using Pydantic models."""
 
     # Common SQL injection payloads with Pydantic validation
-    PAYLOADS = [
+    PAYLOADS: ClassVar[list[SQLInjectionPayload]] = [
         SQLInjectionPayload(
             payload="' OR '1'='1",
             description="Classic SQL injection bypass",
@@ -115,7 +113,7 @@ class SQLInjectionScanner:
             if isinstance(result, list):
                 vulnerabilities.extend(result)
             elif isinstance(result, Exception):
-                logger.error(f"Error scanning page: {result}")
+                logger.error("Error scanning page: %s", result)
 
         return vulnerabilities
 
@@ -155,7 +153,9 @@ class SQLInjectionScanner:
                         vulnerabilities.append(vuln)
 
                 except Exception as e:
-                    logger.debug(f"Error testing {param_name} with {payload_model.payload}: {e}")
+                    logger.debug(
+                        "Error testing %s with %s: %s", param_name, payload_model.payload, e
+                    )
 
         return vulnerabilities
 
@@ -218,6 +218,6 @@ class SQLInjectionScanner:
                         )
 
         except Exception as e:
-            logger.debug(f"Request failed for {test_url}: {e}")
+            logger.debug("Request failed for %s: %s", test_url, e)
 
         return None
