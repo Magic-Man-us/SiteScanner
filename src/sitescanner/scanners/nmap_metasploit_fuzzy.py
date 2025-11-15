@@ -14,7 +14,7 @@ from typing import TYPE_CHECKING, Any, cast
 
 try:
     from rapidfuzz import fuzz
-except Exception:  # pragma: no cover - optional dependency
+except ImportError:  # pragma: no cover - optional dependency
     fuzz = None
 
 if TYPE_CHECKING:
