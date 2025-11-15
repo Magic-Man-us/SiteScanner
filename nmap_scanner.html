@@ -1,0 +1,221 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="./">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Nmap scanner &mdash; SiteScanner5000 0.1.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="_static/jquery.js?v=5d32c60e"></script>
+      <script src="_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="_static/documentation_options.js?v=01f34227"></script>
+      <script src="_static/doctools.js?v=9bcbadda"></script>
+      <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="index.html" class="icon icon-home">
+            SiteScanner5000
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <!-- Local TOC -->
+              <div class="local-toc"><ul>
+<li><a class="reference internal" href="#">Nmap scanner</a><ul>
+<li><a class="reference internal" href="#overview">Overview</a><ul>
+<li><a class="reference internal" href="#key-points">Key points</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#security-legal-notes">Security &amp; legal notes</a></li>
+<li><a class="reference internal" href="#recommended-usage-patterns">Recommended usage patterns</a></li>
+<li><a class="reference internal" href="#example-running-an-integration-scan-manual">Example: running an integration scan (manual)</a></li>
+<li><a class="reference internal" href="#testing-the-scanner">Testing the scanner</a></li>
+<li><a class="reference internal" href="#further-ideas">Further ideas</a></li>
+<li><a class="reference internal" href="#see-also">See also</a></li>
+</ul>
+</li>
+</ul>
+</div>
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">SiteScanner5000</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">Nmap scanner</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/nmap_scanner.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="nmap-scanner">
+<h1>Nmap scanner<a class="headerlink" href="#nmap-scanner" title="Link to this heading"></a></h1>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p>The Nmap scanner is optional and must be used responsibly. Running active
+network discovery or port scanning against systems you do not own or have
+explicit permission to test may be illegal in some jurisdictions.</p>
+</div>
+<section id="overview">
+<h2>Overview<a class="headerlink" href="#overview" title="Link to this heading"></a></h2>
+<p>The project includes an opt-in Nmap-based scanner that invokes the system
+<cite>nmap</cite> binary (via a subprocess runner) and parses the XML output into
+structured Pydantic models. The scanner is intentionally not enabled by
+default to avoid accidental active scans.</p>
+<section id="key-points">
+<h3>Key points<a class="headerlink" href="#key-points" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p>Opt-in only: the scanner will only run when code explicitly creates a
+<code class="docutils literal notranslate"><span class="pre">NmapScanner</span></code> (which uses <code class="docutils literal notranslate"><span class="pre">SubprocessNmapRunner</span></code> by default).</p></li>
+<li><p>Safe subprocess invocation: the runner uses <code class="docutils literal notranslate"><span class="pre">shell=False</span></code> and builds the
+argument list directly to avoid shell injection hazards.</p></li>
+<li><p>Mockable for tests: use <code class="docutils literal notranslate"><span class="pre">MockNmapRunner</span></code> and saved XML fixtures for
+deterministic, fast unit tests.</p></li>
+</ul>
+</section>
+</section>
+<section id="security-legal-notes">
+<h2>Security &amp; legal notes<a class="headerlink" href="#security-legal-notes" title="Link to this heading"></a></h2>
+<p>Port scanning, service enumeration, OS fingerprinting, and related network
+reconnaissance are considered intrusive operations. Before running the
+Nmap scanner against any target, ensure:</p>
+<ul class="simple">
+<li><p>You own the target or have explicit, written permission to scan it.</p></li>
+<li><p>You understand and comply with local laws, organizational policies, and
+any contract terms (some cloud providers and hosting services disallow
+unsolicited scanning).</p></li>
+<li><p>Scans are run with appropriate operational safety (rate-limiting, times,
+monitoring, and change windows).</p></li>
+</ul>
+</section>
+<section id="recommended-usage-patterns">
+<h2>Recommended usage patterns<a class="headerlink" href="#recommended-usage-patterns" title="Link to this heading"></a></h2>
+<ol class="arabic simple">
+<li><p>Unit tests and CI should never call the real <code class="docutils literal notranslate"><span class="pre">nmap</span></code> binary. Use
+<code class="docutils literal notranslate"><span class="pre">MockNmapRunner</span></code> with saved XML fixtures to validate parsing and
+processing logic. See the tests/fixtures directory for examples.</p></li>
+<li><p>For manual or gated integration runs (admin-only), run the scanner on a
+controlled host with permission. Consider using a temporary, isolated
+environment and limit scan intensity (”–top-ports 100” or similar).</p></li>
+</ol>
+</section>
+<section id="example-running-an-integration-scan-manual">
+<h2>Example: running an integration scan (manual)<a class="headerlink" href="#example-running-an-integration-scan-manual" title="Link to this heading"></a></h2>
+<p>Create a short Python script to run nmap via the scanner (example):</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">sitescanner.scanners.nmap_runner</span><span class="w"> </span><span class="kn">import</span> <span class="n">SubprocessNmapRunner</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">sitescanner.scanners.nmap_scanner</span><span class="w"> </span><span class="kn">import</span> <span class="n">NmapScanner</span>
+
+<span class="n">runner</span> <span class="o">=</span> <span class="n">SubprocessNmapRunner</span><span class="p">()</span>
+<span class="n">scanner</span> <span class="o">=</span> <span class="n">NmapScanner</span><span class="p">(</span><span class="n">runner</span><span class="o">=</span><span class="n">runner</span><span class="p">)</span>
+<span class="n">findings</span> <span class="o">=</span> <span class="n">scanner</span><span class="o">.</span><span class="n">scan_target</span><span class="p">(</span><span class="s2">&quot;198.51.100.10&quot;</span><span class="p">)</span>
+<span class="k">for</span> <span class="n">f</span> <span class="ow">in</span> <span class="n">findings</span><span class="p">:</span>
+    <span class="nb">print</span><span class="p">(</span><span class="n">f</span><span class="o">.</span><span class="n">json</span><span class="p">())</span>
+</pre></div>
+</div>
+<p>Notes:</p>
+<ul class="simple">
+<li><p>The SubprocessNmapRunner will raise <code class="docutils literal notranslate"><span class="pre">FileNotFoundError</span></code> if <code class="docutils literal notranslate"><span class="pre">nmap</span></code> is
+not available on the PATH.</p></li>
+<li><p>Consider wrapping the runner invocation with try/except to handle
+timeouts or subprocess errors gracefully.</p></li>
+</ul>
+</section>
+<section id="testing-the-scanner">
+<h2>Testing the scanner<a class="headerlink" href="#testing-the-scanner" title="Link to this heading"></a></h2>
+<p>Unit tests should use the <code class="docutils literal notranslate"><span class="pre">MockNmapRunner</span></code> to return saved XML fixtures.
+Example (pytest):</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">sitescanner.scanners.nmap_runner</span><span class="w"> </span><span class="kn">import</span> <span class="n">MockNmapRunner</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">sitescanner.scanners.nmap_scanner</span><span class="w"> </span><span class="kn">import</span> <span class="n">NmapScanner</span>
+
+<span class="n">xml</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="s2">&quot;tests/fixtures/nmap/sample1.xml&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">read_text</span><span class="p">()</span>
+<span class="n">runner</span> <span class="o">=</span> <span class="n">MockNmapRunner</span><span class="p">(</span><span class="n">xml_output</span><span class="o">=</span><span class="n">xml</span><span class="p">)</span>
+<span class="n">scanner</span> <span class="o">=</span> <span class="n">NmapScanner</span><span class="p">(</span><span class="n">runner</span><span class="o">=</span><span class="n">runner</span><span class="p">)</span>
+<span class="k">assert</span> <span class="nb">len</span><span class="p">(</span><span class="n">scanner</span><span class="o">.</span><span class="n">scan_target</span><span class="p">(</span><span class="s2">&quot;192.0.2.1&quot;</span><span class="p">))</span> <span class="o">&gt;=</span> <span class="mi">1</span>
+</pre></div>
+</div>
+<p>If you want to include a gated integration test that runs real nmap scans,
+mark the test with a pytest marker (for example <code class="docutils literal notranslate"><span class="pre">&#64;pytest.mark.integration</span></code>)
+and require an environment variable (for example <code class="docutils literal notranslate"><span class="pre">RUN_INTEGRATION=1</span></code>) so
+that CI does not run it by default.</p>
+</section>
+<section id="further-ideas">
+<h2>Further ideas<a class="headerlink" href="#further-ideas" title="Link to this heading"></a></h2>
+<ul class="simple">
+<li><p>Map detected product/version strings to severity levels (e.g. known-vulnerable
+versions -&gt; MEDIUM/HIGH) using a curated signature file.</p></li>
+<li><p>Support parsing NSE script outputs for additional findings.</p></li>
+</ul>
+</section>
+<section id="see-also">
+<h2>See also<a class="headerlink" href="#see-also" title="Link to this heading"></a></h2>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">src/sitescanner/scanners/nmap_runner.py</span></code> — runner abstraction</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">src/sitescanner/scanners/nmap_models.py</span></code> — Pydantic models that parse XML</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">src/sitescanner/scanners/nmap_scanner.py</span></code> — scanner mapping models to Vulnerability objects</p></li>
+</ul>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, SiteScanner Contributors.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>
