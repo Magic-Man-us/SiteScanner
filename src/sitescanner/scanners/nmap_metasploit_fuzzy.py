@@ -14,8 +14,8 @@ from typing import TYPE_CHECKING, Any, cast
 
 try:
     from rapidfuzz import fuzz
-except ImportError:  # pragma: no cover - optional dependency
-    fuzz = None
+except Exception:  # pragma: no cover - optional dependency
+    fuzz = None  # type: ignore[assignment]
 
 if TYPE_CHECKING:
     from collections.abc import Iterable
@@ -31,7 +31,7 @@ def _similarity(a: str, b: str) -> float:
         # use token_set_ratio which handles tokenization and ordering well
         return float(fuzz.token_set_ratio(a, b))
     # fallback to difflib ratio scaled to 0-100
-    return SequenceMatcher(None, a, b).ratio() * 100.0
+    return SequenceMatcher(None, a, b).ratio() * 100.0  # type: ignore[unreachable]
 
 
 def load_rules(path: Path | None = None) -> list[dict]:

@@ -25,5 +25,5 @@ repos:
         additional_dependencies:
           - pydantic>=2.5.0
           - types-click
-        args: [--ignore-missing-imports]
+        args: [--ignore-missing-imports, --no-warn-unused-ignores]
         files: ^src/
