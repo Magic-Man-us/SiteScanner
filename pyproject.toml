@@ -6,7 +6,7 @@ authors = [
     {name = "SiteScanner Team", email = "deleterious420+sitescanner5000@gmail.com"}
 ]
 readme = "README.md"
-requires-python = ">=3.11"
+requires-python = ">=3.13"
 license = {text = "MIT"}
 keywords = ["security", "scanner", "vulnerability", "penetration-testing", "web-security"]
 classifiers = [
@@ -16,8 +16,6 @@ classifiers = [
     "Topic :: Security",
     "License :: OSI Approved :: MIT License",
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.11",
-    "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
     "Typing :: Typed",
 ]
@@ -26,7 +24,10 @@ dependencies = [
     "aiohttp>=3.9.0",
     "beautifulsoup4>=4.12.0",
     "click>=8.3.0",
+    "logfire>=4.14.2",
     "pydantic>=2.12.3",
+    "pymetasploit3>=1.0.6",
+    "rapidfuzz>=3.14.3",
 ]
 
 [project.optional-dependencies]
@@ -137,7 +138,7 @@ directory = "htmlcov"
 # mypy Configuration
 # ============================================================================
 [tool.mypy]
-python_version = "3.11"
+python_version = "3.13"
 warn_return_any = true
 warn_unused_configs = true
 disallow_untyped_defs = true
@@ -168,7 +169,7 @@ ignore_missing_imports = true
 # ============================================================================
 [tool.ruff]
 line-length = 100
-target-version = "py311"
+target-version = "py313"
 src = ["src", "tests"]
 extend-include = ["*.ipynb"]
 extend-exclude = ["scripts", "docs"]

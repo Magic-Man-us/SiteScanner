@@ -29,7 +29,7 @@ lint:
 	uv run ruff check .
 
 type:
-	uv run mypy src
+	uv run mypy src --ignore-missing-imports
 
 format:
 	uv run ruff format .

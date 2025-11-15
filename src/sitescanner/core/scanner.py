@@ -12,6 +12,7 @@ from pydantic import BaseModel, Field, HttpUrl
 from sitescanner.core.result import ScanResult
 from sitescanner.scanners.config_check import ConfigScanner
 from sitescanner.scanners.csrf import CSRFScanner
+from sitescanner.scanners.privacy_and_compliance import PrivacyAndComplianceScanner
 from sitescanner.scanners.sql_injection import SQLInjectionScanner
 from sitescanner.scanners.xss import XSSScanner
 
@@ -52,6 +53,7 @@ class Scanner:
             "xss": XSSScanner(),
             "csrf": CSRFScanner(),
             "config": ConfigScanner(),
+            "privacy": PrivacyAndComplianceScanner(),
         }
 
     async def __aenter__(self) -> "Scanner":

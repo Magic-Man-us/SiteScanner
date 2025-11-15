@@ -1,0 +1,14 @@
+<nmaprun>
+  <host>
+    <address addr="192.0.2.1" addrtype="ipv4"/>
+    <ports>
+      <port protocol="tcp" portid="80">
+        <state state="open"/>
+        <service name="http" product="nginx" version="1.18.0"/>
+      </port>
+      <port protocol="tcp" portid="22">
+        <state state="closed"/>
+      </port>
+    </ports>
+  </host>
+</nmaprun>

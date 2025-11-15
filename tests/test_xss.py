@@ -1,10 +1,9 @@
 """Tests for XSS scanner."""
 
-from unittest.mock import AsyncMock
-
 import pytest
 
 from sitescanner.core.result import Severity
+from sitescanner.http import MockClient, SimpleResponse
 from sitescanner.scanners.xss import XSSPayload, XSSScanner
 
 
@@ -36,22 +35,19 @@ async def test_xss_payload_type_validation():
 @pytest.mark.asyncio
 async def test_xss_scanner_detects_vulnerability(mock_session, xss_reflected_response):
     """Test XSS detection with mock responses."""
-    scanner = XSSScanner()
+    # Use MockClient to provide the reflected response body. The scanner will
+    # inject payloads into the query string; MockClient supports prefix matching.
+    client = MockClient(
+        {
+            "https://example.com/search?q=": SimpleResponse(
+                status=200, headers={}, body=xss_reflected_response
+            )
+        }
+    )
 
-    # Mock response context manager properly
-    mock_response = AsyncMock()
-    mock_response.status = 200
-    mock_response.text = AsyncMock(return_value=xss_reflected_response)
-
-    mock_context = AsyncMock()
-    mock_context.__aenter__.return_value = mock_response
-    mock_context.__aexit__.return_value = None
-    mock_session.get.return_value = mock_context
-
-    # Scan pages
+    scanner = XSSScanner(client=client)
     vulnerabilities = await scanner.scan_pages(["https://example.com/search?q=test"], mock_session)
 
-    # Should detect XSS
     assert len(vulnerabilities) > 0
     assert any("XSS" in v.vuln_type for v in vulnerabilities)
     assert any(v.severity in [Severity.HIGH, Severity.MEDIUM] for v in vulnerabilities)
@@ -60,19 +56,12 @@ async def test_xss_scanner_detects_vulnerability(mock_session, xss_reflected_res
 @pytest.mark.asyncio
 async def test_xss_scanner_safe_page(mock_session):
     """Test XSS scanner on safe page with proper encoding."""
-    scanner = XSSScanner()
-
     safe_html = "<html><body>Safe content &lt;script&gt;</body></html>"
-    mock_response = AsyncMock()
-    mock_response.status = 200
-    mock_response.text = AsyncMock(return_value=safe_html)
-
-    mock_context = AsyncMock()
-    mock_context.__aenter__.return_value = mock_response
-    mock_context.__aexit__.return_value = None
-    mock_session.get.return_value = mock_context
+    client = MockClient(
+        {"https://example.com/search?q=": SimpleResponse(status=200, headers={}, body=safe_html)}
+    )
+    scanner = XSSScanner(client=client)
 
     vulnerabilities = await scanner.scan_pages(["https://example.com/search?q=test"], mock_session)
 
-    # Should not detect XSS (content is properly encoded)
     assert len(vulnerabilities) == 0

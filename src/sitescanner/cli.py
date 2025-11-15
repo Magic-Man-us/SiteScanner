@@ -3,6 +3,7 @@
 import asyncio
 import json
 import logging
+import os
 from pathlib import Path
 import sys
 
@@ -12,6 +13,22 @@ from pydantic import HttpUrl, ValidationError
 from sitescanner import __version__
 from sitescanner.core.result import ScanResult, Severity
 from sitescanner.core.scanner import ScanConfig, Scanner
+from sitescanner.runners.metasploit_runner import (
+    MetasploitExploitInfo,
+    MetasploitRunner,
+    MockMetasploitRunner,
+)
+from sitescanner.runners.nmap_runner import SubprocessNmapRunner
+from sitescanner.scanners.nmap_metasploit_fuzzy import match_nmap_to_msf_fuzzy
+from sitescanner.scanners.nmap_models import NmapRunModel
+from sitescanner.scanners.nmap_scanner import NmapScanner
+
+# Optional import: keep at module-level but guarded so the CLI doesn't require
+# the heavy optional dependency unless the operator requests msfrpc usage.
+try:  # pragma: no cover - optional dependency
+    from sitescanner.scanners.pymetasploit_runner import PymetasploitRunner
+except Exception:  # pragma: no cover - optional dependency
+    _PymetasploitRunner = None
 
 
 def setup_logging(verbose: bool) -> None:
@@ -72,7 +89,7 @@ def cli() -> None:
     "--scanners",
     "-s",
     multiple=True,
-    type=click.Choice(["sql_injection", "xss", "csrf", "config"], case_sensitive=False),
+    type=click.Choice(["sql_injection", "xss", "csrf", "config", "privacy"], case_sensitive=False),
     help="Specific scanners to run (default: all)",
 )
 @click.option(
@@ -122,7 +139,7 @@ def scan(
 
         # Build scan configuration with Pydantic validation
         enabled_scanners = (
-            list(scanners) if scanners else ["sql_injection", "xss", "csrf", "config"]
+            list(scanners) if scanners else ["sql_injection", "xss", "csrf", "config", "privacy"]
         )
 
         config = ScanConfig(
@@ -265,5 +282,170 @@ def version() -> None:
     click.echo(f"SiteScanner5000 version {__version__}")
 
 
+@cli.command(name="nmap-triage")
+@click.option("--target", required=True, help="Target host or IP")
+@click.option("--use-nmap", is_flag=True, help="Run real nmap (requires nmap binary)")
+@click.option("--rules", type=click.Path(), default=None, help="Path to JSON match rules")
+@click.option("--threshold", type=float, default=65.0, help="Similarity threshold (0-100)")
+@click.option(
+    "--use-msfrpc",
+    is_flag=True,
+    help="If set, attempt to use pymetasploit3 + msfrpcd (requires env MSF_RPC_ENABLED=true)",
+)
+@click.option(
+    "--format",
+    type=click.Choice(["text", "json"], case_sensitive=False),
+    default="text",
+    help="Output format for triage results",
+)
+@click.option("--verbose", "-v", is_flag=True, help="Enable verbose logging")
+def nmap_triage(
+    target: str,
+    use_nmap: bool,
+    rules: str | None,
+    threshold: float,
+    use_msfrpc: bool,
+    format: str,
+    verbose: bool,
+) -> None:
+    """Run Nmap (or fixture) and fuzzy-match results to potential Metasploit modules.
+
+    This command is safe by default: without ``--use-nmap`` it uses a bundled
+    XML fixture. The command never executes exploit modules; it only suggests
+    potential matches for manual triage.
+    """
+    setup_logging(verbose)
+
+    try:
+        nmap_run = _load_nmap_run(target=target, use_nmap=use_nmap)
+        msf_runner = _build_msf_runner(use_msfrpc=use_msfrpc, verbose=verbose)
+
+        click.echo("Matching nmap results to exploit modules...")
+        matches = list(
+            match_nmap_to_msf_fuzzy(
+                nmap_run,
+                msf_runner,
+                threshold=threshold,
+                rules_path=Path(rules) if rules else None,
+            )
+        )
+
+        _print_nmap_triage_results(matches=matches, output_format=format)
+
+    except KeyboardInterrupt as exc:
+        click.echo("\nInterrupted by user", err=True)
+        raise SystemExit(130) from exc
+    except Exception as exc:
+        click.echo(f"Error: {exc}", err=True)
+        if verbose:
+            raise
+        raise SystemExit(1) from exc
+
+
 if __name__ == "__main__":
     cli()
+
+
+def _load_nmap_run(target: str, use_nmap: bool) -> NmapRunModel:
+    """Load Nmap results either by executing nmap or from a fixture file."""
+
+    if use_nmap:
+        runner = SubprocessNmapRunner()
+        scanner = NmapScanner(runner=runner)
+        click.echo("Running nmap (ensure you have permission to scan the target)")
+        retcode, stdout, stderr = runner.run(target, scanner.flags)
+        if retcode != 0:
+            click.echo(f"nmap failed: {stderr}", err=True)
+            raise SystemExit(2)
+        return NmapRunModel.from_xml(stdout)
+
+    fixture = Path("tests/fixtures/nmap/sample1.xml")
+    if not fixture.exists():
+        click.echo("Sample fixture not found; run from project root", err=True)
+        raise SystemExit(1)
+    xml = fixture.read_text()
+    return NmapRunModel.from_xml(xml)
+
+
+def _build_msf_runner(use_msfrpc: bool, verbose: bool) -> MetasploitRunner:
+    """Construct a Metasploit runner based on CLI flags and environment.
+
+    Returns a concrete runner instance; falls back to a mock runner when
+    msfrpc usage is disabled or unavailable.
+    """
+
+    msf_runner: MetasploitRunner | None = None
+
+    if use_msfrpc:
+        if os.environ.get("MSF_RPC_ENABLED", "false").lower() != "true":
+            click.echo(
+                "MSF RPC usage is disabled by default. Set MSF_RPC_ENABLED=true to enable.",
+                err=True,
+            )
+            raise SystemExit(2)
+
+        if _PymetasploitRunner is None:
+            msg = "pymetasploit3 is not installed or PymetasploitRunner unavailable"
+            raise RuntimeError(msg)
+
+        try:  # type: ignore[unreachable]
+            msf_host = os.environ.get("MSF_RPC_HOST", "127.0.0.1")
+            msf_port = int(os.environ.get("MSF_RPC_PORT", "55553"))
+            msf_user = os.environ.get("MSF_RPC_USER")
+            msf_pass = os.environ.get("MSF_RPC_PASSWORD")
+            msf_ssl = os.environ.get("MSF_RPC_SSL", "false").lower() == "true"
+
+            msf_runner = PymetasploitRunner(
+                host=msf_host,
+                port=msf_port,
+                user=msf_user,
+                password=msf_pass,
+                ssl=msf_ssl,
+            )
+        except Exception as exc:  # pragma: no cover - network/env dependent
+            click.echo(f"Failed to initialize msfrpc runner: {exc}", err=True)
+            if verbose:
+                raise
+            raise SystemExit(2) from exc
+
+    if msf_runner is None:
+        demo_exploits = [
+            MetasploitExploitInfo(name="exploit/linux/nginx_fake", description="nginx RCE"),
+        ]
+        msf_runner = MockMetasploitRunner(exploits=demo_exploits)
+
+    return msf_runner
+
+
+def _print_nmap_triage_results(
+    matches: list[tuple[str, int, MetasploitExploitInfo, float, Severity]], output_format: str
+) -> None:
+    """Pretty-print nmap / Metasploit triage results to the console."""
+
+    if output_format == "json":
+        out = []
+        for addr, portid, exploit, score, severity in matches:
+            out.append(
+                {
+                    "addr": addr,
+                    "port": portid,
+                    "exploit": {
+                        "name": exploit.name,
+                        "description": exploit.description,
+                    },
+                    "score": score,
+                    "suggested_severity": severity.value,
+                }
+            )
+        click.echo(json.dumps(out, indent=2))
+        return
+
+    any_found = False
+    for addr, portid, exploit, score, severity in matches:
+        any_found = True
+        click.echo(
+            f"{addr}:{portid} -> {exploit.name} (score={score:.1f}) suggested={severity.value}"
+        )
+
+    if not any_found:
+        click.echo("No matches above threshold found.")

@@ -1,0 +1,13 @@
+[
+  { "product_regex": "nginx", "severity": "medium" },
+  { "product_regex": "apache", "severity": "medium" },
+  { "product_regex": "openbsd|openssh|sshd", "severity": "low" },
+  { "product_regex": "tomcat", "severity": "high" },
+  { "product_regex": "elasticsearch|elastic", "severity": "high" },
+  { "product_regex": "mysql|mariadb", "severity": "high" },
+  { "product_regex": "postgresql|postgres", "severity": "high" },
+  { "product_regex": "rabbitmq", "severity": "medium" },
+  { "product_regex": "jenkins", "severity": "high" },
+  { "product_regex": "cassandra", "severity": "medium" },
+  { "product_regex": "redis", "severity": "medium" }
+]

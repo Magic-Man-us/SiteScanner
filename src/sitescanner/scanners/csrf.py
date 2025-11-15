@@ -1,14 +1,19 @@
 """Cross-Site Request Forgery (CSRF) vulnerability scanner with Pydantic validation."""
 
+from __future__ import annotations
+
 import asyncio
 import logging
-from typing import Any, ClassVar
+from typing import TYPE_CHECKING, Any, ClassVar
 
-import aiohttp
 from bs4 import BeautifulSoup
 from pydantic import BaseModel, Field
 
+if TYPE_CHECKING:
+    import aiohttp
+
 from sitescanner.core.result import Severity, Vulnerability
+from sitescanner.http import AiohttpAdapter, HTTPClientProtocol, SimpleResponse
 
 logger = logging.getLogger(__name__)
 
@@ -54,7 +59,15 @@ class CSRFProtectionCheck(BaseModel):
 
 
 class CSRFScanner:
-    """Scanner for CSRF vulnerabilities using Pydantic validation."""
+    """Scanner for CSRF vulnerabilities using Pydantic validation.
+
+    Accepts an optional HTTP client implementing `HTTPClientProtocol` for testability.
+    If no client is provided, the scanner will create an `AiohttpAdapter` from the
+    passed `aiohttp.ClientSession` at runtime.
+    """
+
+    def __init__(self, client: HTTPClientProtocol | None = None) -> None:
+        self.client = client
 
     # Common CSRF token field names
     CSRF_TOKEN_NAMES: ClassVar[list[str]] = [
@@ -107,26 +120,28 @@ class CSRFScanner:
         vulnerabilities: list[Vulnerability] = []
 
         try:
-            async with session.get(url) as response:
-                html = await response.text()
-                headers = response.headers
-                cookies = response.cookies
+            # Use injected client when available for testability; otherwise fall back
+            # to the module-level AiohttpAdapter implementation.
+            client = self.client or AiohttpAdapter(session)
 
-                # Parse HTML for forms
-                soup = BeautifulSoup(html, "html.parser")
-                forms = soup.find_all("form")
+            resp: SimpleResponse = await client.get(url)
+            html = resp.body
+            headers = dict(resp.headers or {})
+            cookies = resp.cookies or {}
 
-                for form in forms:
-                    test_case = self._analyze_form(form, url)
-                    protection = self._check_csrf_protection(
-                        test_case, dict(headers), dict(cookies)
-                    )
+            # Parse HTML for forms
+            soup = BeautifulSoup(html, "html.parser")
+            forms = soup.find_all("form")
 
-                    # Generate vulnerability if protections are insufficient
-                    if protection.calculate_protection_level() in ["none", "weak"]:
-                        vuln = self._create_vulnerability(test_case, protection)
-                        if vuln:
-                            vulnerabilities.append(vuln)
+            for form in forms:
+                test_case = self._analyze_form(form, url)
+                protection = self._check_csrf_protection(test_case, dict(headers), dict(cookies))
+
+                # Generate vulnerability if protections are insufficient
+                if protection.calculate_protection_level() in ["none", "weak"]:
+                    vuln = self._create_vulnerability(test_case, protection)
+                    if vuln:
+                        vulnerabilities.append(vuln)
 
         except Exception as e:
             logger.debug("Error scanning %s for CSRF: %s", url, e)
@@ -215,7 +230,13 @@ class CSRFScanner:
 
         # Check for SameSite cookie attribute
         for cookie in cookies.values():
-            if hasattr(cookie, "get") and callable(cookie.get) and cookie.get("samesite"):
+            # MockClient returns simple dicts for cookies; production aiohttp cookies are Morsel-like
+            if isinstance(cookie, dict):
+                # cookie may contain keys like 'samesite' or 'SameSite'
+                if cookie.get("samesite") or cookie.get("SameSite"):
+                    protection.has_samesite_cookie = True
+                    break
+            elif hasattr(cookie, "get") and callable(cookie.get) and cookie.get("samesite"):
                 protection.has_samesite_cookie = True
                 break
 

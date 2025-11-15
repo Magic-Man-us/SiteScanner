@@ -9,6 +9,7 @@ import aiohttp
 from pydantic import BaseModel, Field, field_validator
 
 from sitescanner.core.result import Severity, Vulnerability
+from sitescanner.http import AiohttpAdapter, HTTPClientProtocol, SimpleResponse
 
 logger = logging.getLogger(__name__)
 
@@ -45,7 +46,15 @@ class SQLInjectionTestCase(BaseModel):
 
 
 class SQLInjectionScanner:
-    """Scanner for SQL injection vulnerabilities using Pydantic models."""
+    """Scanner for SQL injection vulnerabilities using Pydantic models.
+
+    Accepts an optional HTTP client implementing `HTTPClientProtocol` for testability.
+    If no client is provided, the scanner will create an `AiohttpAdapter` from the
+    passed `aiohttp.ClientSession` at runtime.
+    """
+
+    def __init__(self, client: HTTPClientProtocol | None = None) -> None:
+        self.client = client
 
     # Common SQL injection payloads with Pydantic validation
     PAYLOADS: ClassVar[list[SQLInjectionPayload]] = [
@@ -195,27 +204,34 @@ class SQLInjectionScanner:
         )
 
         try:
-            async with session.get(test_url) as response:
-                body = await response.text()
-                test_case.response_code = response.status
-                test_case.response_body = body[:1000]  # Limit stored body size
+            # Use injected client when available for testability. The adapter is
+            # imported at runtime to avoid bringing heavy optional runtime deps
+            # into test environments that use MockClient.
+            client = self.client
+            if client is None:
+                client = AiohttpAdapter(session)
 
-                # Check for SQL error indicators in response
-                body_lower = body.lower()
-                for indicator in test_case.test_payload.error_indicators:
-                    if indicator.lower() in body_lower:
-                        return Vulnerability(
-                            vuln_type="SQL Injection",
-                            severity=Severity.CRITICAL,
-                            url=test_case.url,
-                            parameter=test_case.parameter,
-                            payload=test_case.test_payload.payload,
-                            evidence=f"SQL error indicator '{indicator}' found in response",
-                            description=f"SQL injection vulnerability detected in parameter '{test_case.parameter}'. {test_case.test_payload.description}",
-                            remediation="Use parameterized queries or prepared statements. Never concatenate user input directly into SQL queries. Implement input validation and use ORM frameworks.",
-                            cwe_id="CWE-89",
-                            cvss_score=9.8,
-                        )
+            resp: SimpleResponse = await client.get(test_url)
+            body = resp.body
+            test_case.response_code = resp.status
+            test_case.response_body = body[:1000]
+
+            # Check for SQL error indicators in response
+            body_lower = body.lower()
+            for indicator in test_case.test_payload.error_indicators:
+                if indicator.lower() in body_lower:
+                    return Vulnerability(
+                        vuln_type="SQL Injection",
+                        severity=Severity.CRITICAL,
+                        url=test_case.url,
+                        parameter=test_case.parameter,
+                        payload=test_case.test_payload.payload,
+                        evidence=f"SQL error indicator '{indicator}' found in response",
+                        description=f"SQL injection vulnerability detected in parameter '{test_case.parameter}'. {test_case.test_payload.description}",
+                        remediation="Use parameterized queries or prepared statements. Never concatenate user input directly into SQL queries. Implement input validation and use ORM frameworks.",
+                        cwe_id="CWE-89",
+                        cvss_score=9.8,
+                    )
 
         except Exception as e:
             logger.debug("Request failed for %s: %s", test_url, e)

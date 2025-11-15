@@ -69,3 +69,5 @@ scan_results/
 
 # Sphinx documentation build output (generated files only)
 docs/_build/
+
+.env

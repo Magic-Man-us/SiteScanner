@@ -1,13 +1,20 @@
 """Security configuration and misconfiguration scanner with Pydantic validation."""
 
+from __future__ import annotations
+
 import asyncio
 import logging
-from typing import ClassVar
+from typing import TYPE_CHECKING, ClassVar
 
-import aiohttp
 from pydantic import BaseModel, Field
 
+if TYPE_CHECKING:
+    import aiohttp
+
+    from sitescanner.http import HTTPClientProtocol, SimpleResponse
+
 from sitescanner.core.result import Severity, Vulnerability
+from sitescanner.http import AiohttpAdapter
 
 logger = logging.getLogger(__name__)
 
@@ -45,7 +52,15 @@ class TLSConfiguration(BaseModel):
 
 
 class ConfigScanner:
-    """Scanner for security misconfigurations using Pydantic validation."""
+    """Scanner for security misconfigurations using Pydantic validation.
+
+    Accepts an optional HTTP client implementing `HTTPClientProtocol` for testability.
+    If no client is provided, the scanner will create an `AiohttpAdapter` from the
+    passed `aiohttp.ClientSession` at runtime.
+    """
+
+    def __init__(self, client: HTTPClientProtocol | None = None) -> None:
+        self.client = client
 
     # Security headers to check with Pydantic models
     SECURITY_HEADERS: ClassVar[list[SecurityHeader]] = [
@@ -163,38 +178,43 @@ class ConfigScanner:
         vulnerabilities: list[Vulnerability] = []
 
         try:
-            async with session.get(url) as response:
-                headers = {k.lower(): v for k, v in response.headers.items()}
+            # Use injected client when available for testability
+            client = self.client
+            if client is None:
+                client = AiohttpAdapter(session)
 
-                # Create test case with Pydantic validation
-                test_case = ConfigTestCase(
-                    url=url,
-                    test_type="security_headers",
-                    headers_checked=headers,
-                    response_code=response.status,
-                    server_info=headers.get("server"),
-                )
+            resp: SimpleResponse = await client.get(url)
+            headers = {k.lower(): v for k, v in (resp.headers or {}).items()}
 
-                # Check for missing security headers
-                for sec_header in self.SECURITY_HEADERS:
-                    if sec_header.name.lower() not in headers:
-                        test_case.missing_headers.append(sec_header.name)
-                        vulnerabilities.append(
-                            self._create_missing_header_vulnerability(sec_header, test_case)
-                        )
+            # Create test case with Pydantic validation
+            test_case = ConfigTestCase(
+                url=url,
+                test_type="security_headers",
+                headers_checked=headers,
+                response_code=resp.status,
+                server_info=headers.get("server"),
+            )
 
-                # Check for dangerous headers that should not be present
-                vulnerabilities.extend(
-                    self._create_info_disclosure_vulnerability(
-                        danger_header, headers[danger_header.name.lower()], test_case
+            # Check for missing security headers
+            for sec_header in self.SECURITY_HEADERS:
+                if sec_header.name.lower() not in headers:
+                    test_case.missing_headers.append(sec_header.name)
+                    vulnerabilities.append(
+                        self._create_missing_header_vulnerability(sec_header, test_case)
                     )
-                    for danger_header in self.DANGEROUS_HEADERS
-                    if danger_header.name.lower() in headers
-                )
 
-                # Check TLS configuration
-                tls_vulns = await self._check_tls_config(url, headers)
-                vulnerabilities.extend(tls_vulns)
+            # Check for dangerous headers that should not be present
+            vulnerabilities.extend(
+                self._create_info_disclosure_vulnerability(
+                    danger_header, headers[danger_header.name.lower()], test_case
+                )
+                for danger_header in self.DANGEROUS_HEADERS
+                if danger_header.name.lower() in headers
+            )
+
+            # Check TLS configuration
+            tls_vulns = await self._check_tls_config(url, headers)
+            vulnerabilities.extend(tls_vulns)
 
         except Exception as e:
             logger.debug("Error checking config on %s: %s", url, e)
